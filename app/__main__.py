@@ -1,3 +1,4 @@
+from os import path, makedirs
 import numpy as np
 from requests.utils import quote
 from skimage.measure import find_contours, points_in_poly, approximate_polygon
@@ -14,6 +15,28 @@ zoom = 20
 midX = 300
 midY = 300
 key = 'AIzaSyC7vVBPCrVhXzj-Dug1B-cPlUsiTw4p5-4'
+config = {
+    'output': {
+        'directory': './output'
+    }
+}
+images = {
+    'source': {
+        'value': None,
+        'save': True,
+        'save_name': 'source.png'
+    },
+    'grayscale': {
+        'value': None,
+        'save': True,
+        'save_name': 'grayscale.png'
+    },
+    'binary': {
+        'value': None,
+        'save': True,
+        'save_name': 'binary.png'
+    },
+}
 
 def getBuildingsMap(center_latitude, center_longitude, zoom, midX, midY, key):  # Styled google map showing only building outlines.
     str_Center = str(center_latitude) + ',' + str(center_longitude)
@@ -21,23 +44,37 @@ def getBuildingsMap(center_latitude, center_longitude, zoom, midX, midY, key):  
     mapZoom = str(zoom)
     safeURL_Style = quote('feature:landscape.man_made|element:geometry.stroke|visibility:on|color:0xffffff|weight:1')
     urlBuildings = "http://maps.googleapis.com/maps/api/staticmap?center=" + str_Center + "&zoom=" + mapZoom + "&format=png32&sensor=false&size=" + str_Size + "&key=" + key + "&maptype=roadmap&style=visibility:off&style=" + safeURL_Style
-    # print('Query: ' + urlBuildings)  # Debugging.
+    # print('Query: ' + urlBuildings)  # DEBUG
     return urlBuildings
 
-def getPixelCoordinatesOfBuildings(urlBuildings, midX, midY):
-    mainBuilding = None
-    imgBuildings = io.imread(urlBuildings)
-    gray_imgBuildings = color.rgb2gray(imgBuildings)
-    # will create inverted binary image
-    binary_imageBuildings = np.where(gray_imgBuildings > np.mean(gray_imgBuildings), 0.0, 1.0)
-    contoursBuildings = find_contours(binary_imageBuildings, 0.1)
+def save_images(image_input, options):
+    if not path.exists(options['directory']):
+        makedirs(options['directory'])
+    # Note: Not sure what this does exactly, but should have somethign to do with image quality.
+    # I get the following warning.
+    #   C:\Anaconda3_2.5.0_3.5.1_64\lib\site-packages\skimage\util\dtype.py:111: 
+    #   UserWarning: Possible precision loss when converting from float64 to uint16 "%s to %s" % (dtypeobj_in, dtypeobj))
+    # io.use_plugin('freeimage')
 
-    for n, contourBuilding in enumerate(contoursBuildings):
+    # Note: The following two lines are probably easier to read.
+    # for image in images:
+        # if images[image]['save'] is True:
+    for image in [v for k, v in image_input.items() if v['save'] is True]:
+        io.imsave('output/' + image['save_name'], image['value'])
+
+def getPixelCoordinatesOfBuildings(urlBuildings, midX, midY):
+    images['source']['value'] = io.imread(urlBuildings)
+    images['grayscale']['value'] = color.rgb2gray(images['source']['value'])
+    # Will create inverted binary image.
+    images['binary']['value'] = np.where(images['grayscale']['value'] > np.mean(images['grayscale']['value']), 0.0, 1.0)
+    contours = find_contours(images['binary']['value'], 0.1)
+
+    for n, contourBuilding in enumerate(contours):
         if (contourBuilding[0, 1] == contourBuilding[-1, 1]) and (contourBuilding[0, 0] == contourBuilding[-1, 0]):
-            # check if it is inside any other polygon, so this will remove any additional elements
+            # Check if it is inside any other polygon, so this will remove any additional elements.
             isInside = False
             skipPoly = False
-            for othersPolygon in contoursBuildings:
+            for othersPolygon in contours:
                 isInside = points_in_poly(contourBuilding, othersPolygon)
                 if all(isInside):
                     skipPoly = True
@@ -46,11 +83,11 @@ def getPixelCoordinatesOfBuildings(urlBuildings, midX, midY):
             if skipPoly == False:
                 center_inside = points_in_poly(np.array([[midX, midY]]), contourBuilding)
                 if center_inside:
-            # approximate will generalize the polygon
+                    # Approximate will generalize the polygon.
                     mainBuilding = approximate_polygon(contourBuilding, tolerance=2)
-
-    print('Main building: ' + mainBuilding)
+                    print('Main building: ' + str(mainBuilding))  # DEBUG
 
 if __name__ == '__main__': 
     urlBuildings = getBuildingsMap(center_latitude, center_longitude, zoom, midX, midY, key)
     getPixelCoordinatesOfBuildings(urlBuildings, midX, midY)
+    save_images(images, config['output'])
