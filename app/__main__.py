@@ -1,3 +1,5 @@
+import os
+
 from os import path, makedirs
 import numpy as np
 from requests.utils import quote
@@ -14,7 +16,7 @@ center_longitude = -76.5863645
 zoom = 20
 midX = 300
 midY = 300
-key = 'AIzaSyC7vVBPCrVhXzj-Dug1B-cPlUsiTw4p5-4'
+key = os.getenv('GOOGLE_API_KEY')
 config = {
     'output': {
         'directory': './output'
