@@ -19,4 +19,4 @@ requests==2.17.3
 scikit-image==0.13.0
 scipy
 six==1.10.0
-urllib3==1.21.1
+urllib3==1.26.5
