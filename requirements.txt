@@ -1,6 +1,6 @@
 # Warning: List may not be complete. Used local Anaconda3 distribution instead of installing requirements in virtual environment.
 appdirs==1.4.3
-certifi==2017.4.17
+certifi==2022.12.7
 chardet==3.0.3
 cycler==0.10.0
 decorator==4.0.11
